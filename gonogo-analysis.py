@@ -1,8 +1,7 @@
-import numpy as np
 import pandas as pd
-import scipy as sp
-import matplotlib.pyplot as plt
 from scipy import stats as st
+
+from statsmodels.stats.multicomp import pairwise_tukeyhsd
 
 df = pd.read_excel("./data/20211026_gonogo.xlsx")  # エクセルデータをデータフレーム化を行い、読み込み
 
@@ -15,9 +14,9 @@ df_preprocessed = pd.concat([df_encoding_session, df_preprocess], axis=1)  # RT�
 df_preprocessed.to_excel("./data/df_preprocessed.xlsx")  # 前処理したデータをエクセルデータとして出力
 
 # 反応時間における記述統計の作成
-a = df_preprocessed[df_preprocessed["Session_1"] == True]
-a_1 = a.iloc[:, -1].mean()
-a_2 = a.iloc[:, -1].sem()
+a = df_preprocessed[df_preprocessed["Session_1"] == True]  # 各セッションにおけるデータのみ抽出
+a_1 = a.iloc[:, -1].mean()  # 各セッションのnogoのRTの平均
+a_2 = a.iloc[:, -1].sem()   # 各セッションのnogoのRTの標準誤差
 b = df_preprocessed[df_preprocessed["Session_2"] == True]
 b_1 = b.iloc[:, -1].mean()
 b_2 = b.iloc[:, -1].sem()
@@ -31,4 +30,43 @@ topic_describe.columns = ["Long条件", "Medium条件", "Short条件"]
 topic_describe.to_excel("./data/topic_describe.xlsx")
 
 
-print(topic_describe)
+# １要因参加者間の分散分析
+
+# SS_total 全体平方和
+SS_total = 0
+whole_mean = df_preprocess.mean()  # nogoのRTの全体平均
+
+for i in range(3):
+    if i == 0:
+        for j in a.iloc[:, -1]:
+            SS_total += (j - whole_mean) ** 2
+    elif i == 1:
+        for j in b.iloc[:, -1]:
+            SS_total += (j - whole_mean) ** 2
+    else:
+        for j in c.iloc[:, -1]:
+            SS_total += (j - whole_mean) ** 2
+
+# SS_A 群間平方和
+SS_A = 0
+
+for k in range(3):
+    if k == 0:
+        SS_A += (a_1 - whole_mean) ** 2
+    elif k == 1:
+        SS_A += (b_1 - whole_mean) ** 2
+    else:
+        SS_A += (c_1 - whole_mean) ** 2
+    SS_A *= 3
+
+# η_2値の計算と分散分析
+
+η_2 = SS_A/SS_total
+f, p = st.f_oneway(a.iloc[:, -1], b.iloc[:, -1], c.iloc[:, -1])
+
+# Tukey法へチャレンジしたけど無理そう間に合わない
+# p_1 = pairwise_tukeyhsd(a.iloc[:, -1], b.iloc[:, -1])
+# p_2 = pairwise_tukeyhsd(a.iloc[:, -1].mean(), c.iloc[:, -1].mean())
+# p_3 = pairwise_tukeyhsd(b.iloc[:, -1].mean(), c.iloc[:, -1].mean())
+print(η_2, f, p)
+
